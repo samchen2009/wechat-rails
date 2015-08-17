@@ -1,15 +1,18 @@
 module Wechat
   class AccessToken
-    attr_reader :client, :appid, :secret, :token_file, :token_data
+    attr_reader :client, :appid, :secret, :token_file, :token_data 
+    attr_accessor :component_access_token, :pre_auth_code
 
     def initialize(client, appid, secret, token_file)
       @appid = appid
       @secret = secret
       @client = client
-      @token_file = token_file
+      @token_file = token_file || "/tmp/#{Time.now.to_i}"
+      @component_access_token
     end
 
     def token
+      #debugger
       begin
         @token_data ||= JSON.parse(File.read(token_file))
       rescue
@@ -18,11 +21,17 @@ module Wechat
       return valid_token(@token_data)
     end
 
+    def component_token
+      self.refresh
+      return valid_token(@token_data) 
+    end
+
     def refresh
       data = client.get("token", params:{grant_type: "client_credential", appid: appid, secret: secret})
       File.open(token_file, 'w'){|f| f.write(data.to_s)} if valid_token(data)
       return @token_data = data
     end
+
 
     private 
     def valid_token token_data

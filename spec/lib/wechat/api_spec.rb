@@ -4,7 +4,7 @@ describe Wechat::Api do
   let(:toke_file){Rails.root.join("tmp/access_token")}
 
   subject do
-    Wechat::Api.new("appid", "secret", toke_file)
+    Wechat::Api.new(appid: "appid", secret: "secret", access_token_file: toke_file)
   end
 
   before :each do

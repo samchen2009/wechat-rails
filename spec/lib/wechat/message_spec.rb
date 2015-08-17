@@ -1,5 +1,3 @@
-require 'spec_helper'
-
 describe Wechat::Message do
   let(:text_request){request_base.merge(:MsgType => "text", :Content => "text message")}
 
@@ -67,7 +65,7 @@ describe Wechat::Message do
 
     specify "will get image file" do
       message = Wechat::Message.from_hash(image_request)
-      expect(Wechat.api).to receive(:media).with("media_id")
+      expect(Wechat.api).to receive(:media).with("media_id", nil)
       message.as(:image)
     end
 

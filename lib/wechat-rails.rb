@@ -1,9 +1,14 @@
 require "wechat/api"
 
+require 'wechat/schema'
+require 'wechat/railtie'
+
 module Wechat
   autoload :Message, "wechat/message"
   autoload :Responder, "wechat/responder"
   autoload :Response, "wechat/response"
+  autoload :AESCrypt, 'wechat/crypto'
+  autoload :Component, 'wechat/model'
 
   class AccessTokenExpiredError < StandardError; end
   class ResponseError < StandardError
@@ -23,7 +28,7 @@ module Wechat
         config = YAML.load(ERB.new(File.new(config_file).read).result)[Rails.env] if (File.exist?(config_file))
       end
 
-      config ||= {appid: ENV["WECHAT_APPID"], secret: ENV["WECHAT_SECRET"], token: ENV["WECHAT_TOKEN"], access_token: ENV["WECHAT_ACCESS_TOKEN"]}
+      config ||= {appid: ENV["WECHAT_APPID"], secret: ENV["WECHAT_SECRET"], token: ENV["WECHAT_TOKEN"], access_token_file: ENV["WECHAT_ACCESS_TOKEN_FILE"]}
       config.symbolize_keys!
       config[:access_token] ||= Rails.root.join("tmp/access_token").to_s
       OpenStruct.new(config)
@@ -31,7 +36,14 @@ module Wechat
   end
 
   def self.api
-    @api ||= Wechat::Api.new(self.config.appid, self.config.secret, self.config.access_token)
+    @api ||= Wechat::Api.new(
+      appid: self.config.appid, 
+      secret: self.config.secret, 
+      access_token_file: self.config.access_token_file, 
+      encoding_aes_token: self.config.encoding_aes_token, 
+      encoding_aes_token_backup: self.config.encoding_aes_token_backup,
+      component_account: self.config.component_account || false
+    )
   end
 end
 
@@ -43,7 +55,7 @@ if defined? ActionController::Base
         self.wechat = Wechat.api
         self.token = Wechat.config.token
       else
-        self.wechat = Wechat::Api.new(opts[:appid], opts[:secret], opts[:access_token])
+        self.wechat = Wechat::Api.new(opts)
         self.token = opts[:token]
       end
     end

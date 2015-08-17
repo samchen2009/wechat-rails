@@ -9,8 +9,8 @@ module Wechat
     }
 
     class << self
-      def from_hash message_hash
-        self.new(message_hash)
+      def from_hash message_hash, component_appid = nil
+        self.new(message_hash, component_appid)
       end
 
       def to to_user
@@ -32,8 +32,9 @@ module Wechat
 
     attr_reader :message_hash
 
-    def initialize(message_hash)
+    def initialize(message_hash, component_appid = nil)
       @message_hash = message_hash || {}
+      @component_appid = component_appid
     end
 
     def [](key)
@@ -54,7 +55,7 @@ module Wechat
         message_hash[:Content]
 
       when :image, :voice, :video
-        Wechat.api.media(message_hash[:MediaId])
+        Wechat.api.media(message_hash[:MediaId], @component_appid)
 
       when :location
         message_hash.slice(:Location_X, :Location_Y, :Scale, :Label).inject({}){|results, value| 
@@ -166,6 +167,5 @@ module Wechat
         memo.merge!(key => value)
       end
     end
-
   end
 end

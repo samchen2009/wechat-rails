@@ -1,5 +1,6 @@
 require 'spec_helper'
 
+
 class WechatController < ApplicationController
   wechat_responder 
 end
@@ -12,10 +13,12 @@ describe WechatController, type: :controller do
 
   render_views
 
+  include Wechat::AESCrypt
+
   let(:signature_params) do
     timestamp = "1234567"
     nonce = "nonce"
-    signature = Digest::SHA1.hexdigest([ENV["WECHAT_TOKEN"], timestamp, nonce].sort.join)
+    signature = Digest::SHA1.hexdigest([self.controller.class.token, timestamp, nonce].sort.join)
     {timestamp: timestamp, nonce: nonce, signature:signature}
   end
 
@@ -26,6 +29,29 @@ describe WechatController, type: :controller do
       :CreateTime => "1348831860",
       :MsgId => "1234567890123456",
     }
+  end
+
+  let(:encoding_aes_token) do
+    # 43 ch + "="
+    #key = SecureRandom.hex(21) + 'a'
+    self.controller.class.wechat.encoding_aes_token|| '1'*43
+  end
+
+  let(:aes_key) do 
+    Base64.decode64(encoding_aes_token+ '=')
+  end
+
+  let(:encrypted_msg) do
+    {
+      :Encrypt => encrypt_msg(message_base.to_xml(:root => "xml", :skip_instruct => true) , aes_key)
+    }
+  end
+
+  let(:encrypt_sigature_params) do
+    timestamp = "1234567"
+    nonce = 'nonce'
+    signature = Digest::SHA1.hexdigest([self.controller.class.token, timestamp, nonce, encrypted_msg[:Encrypt]].sort.join)
+    {TimeStamp: timestamp, MsgSignature: signature, Nonce: nonce, xml: encrypted_msg, encrypt_type: 'aes'}
   end
 
   let(:text_message){message_base.merge(:MsgType => "text", :Content => "text message")}
@@ -58,6 +84,18 @@ describe WechatController, type: :controller do
       post :create, signature_params.merge(signature:"invalid_signature")
       expect(response.code).to eq("403")
     end
+  end
+
+  describe "Decrypt message" do
+    specify "on create action" do
+      #debugger
+      post :create, encrypt_sigature_params
+      expect(response.code).to_not eq('403')
+    end
+  end
+
+  describe "Wechat Component verify ticket callback" do
+
   end
 
   specify "echo 'echostr' param when show" do
