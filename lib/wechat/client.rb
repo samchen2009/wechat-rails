@@ -9,8 +9,8 @@ module Wechat
       @base = base
     end
 
-    def get path, header={}
-      request(path, header) do |url, header|
+    def get path, header={}, component_id=nil
+      request_with_reply(path, header) do |url, header|
         RestClient.get(url, header)
       end
     end
@@ -27,6 +27,10 @@ module Wechat
       end
     end
 
+    def request_with_reply path, header={}, &block
+      request_ex path, header, true, &block
+    end
+    
     def request path, header={}, &block
       request_ex path, header, false, &block
     end
