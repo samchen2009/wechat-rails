@@ -67,7 +67,7 @@ class Wechat::Api
     with_access_token(headers[:params]){|params| client.post path, payload, headers.merge(params: params), component_id}
   end
 
-  def with_access_token params={}, tries=2, component_appid = nil
+  def with_access_token params={}, tries=50, component_appid = nil
     begin
       params ||= {}
       if component_appid
@@ -75,9 +75,13 @@ class Wechat::Api
       else
         yield(params.merge(access_token: access_token.token))
       end
-    rescue Wechat::AccessTokenExpiredError => ex
-      access_token.refresh
-      retry unless (tries -= 1).zero?
+    rescue Exception => ex #Wechat::AccessTokenExpiredError => ex
+      if ex.is_a?(Wechat::AccessTokenExpiredError) or ex.to_s =~ /access_token.*40001/i
+        access_token.refresh
+        retry unless (tries -= 1).zero?
+      else
+        raise ex
+      end
     end
   end
 
